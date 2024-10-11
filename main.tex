@@ -1,0 +1,765 @@
+\input{preamble.tex}
+\usepackage{enumitem}
+\usepackage{stmaryrd}
+\usepackage{xhfill}
+\usepackage{array}
+\usepackage{outlines}
+\usepackage{tikz-cd}
+\newcommand{\QT}{\mathbb{Q}[T]}
+\newcommand{\ZT}{\mathbb{Z}[T]}
+\newcommand{\bigslant}[2]{{\raisebox{.1em}{$#1$}\left/\raisebox{-.1em}{$#2$}\right.}}
+\setcounter{MaxMatrixCols}{11}
+\DeclareRobustCommand\longtwoheadrightarrow
+     {\relbar\joinrel\twoheadrightarrow}
+\newcommand{\ux}{\underline{x}}
+\newcommand{\uy}{\underline{y}}
+\DeclareMathOperator{\key}{key}
+\let\phi\varphi
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent Das ist meine Zusammefassung für die Vorlesung Einführung in die diskrete Mathematik, gehalten vom Prof. Dr. Jens Vygen im Wintersemester 23/24. Wie immer, ohne Garantie auf Fehlerfreiheit. 
+\end{abstract}
+
+\tableofcontents
+
+\newpage
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{m{5cm} m{9cm} m{2.3cm}}
+        \toprule
+         Algorithmus & Idee & Laufzeit  \\
+         \midrule
+         \textsc{Eulers Algorithmus} & zerlege $G$ in Kreise & $O(m)$ \\
+         \midrule
+         \textsc{BFS}, \textsc{DFS} & Graphendurchmusterung & $O(n+m)$ \\
+         \textsc{Strongly Connected Component Algorithmus} & zweifaches DFS mit Knotenmarkierungen & $O(n+m)$ \\
+         \midrule
+         \textsc{Kruskal} & sortiere die Kanten und füge die minimalen Kanten hinzu & $O(m\log n)$ \\
+         \textsc{Prim} & sukzessive wähle die kleinste Kante aus $\delta(V(T))$ & $O(m+n \log n)$\\
+         \midrule
+         \textsc{Edmond's Branching Algorithmus} & sukzessive kontrahiere Kreise & $O(mn)$ \\
+         \midrule
+         \textsc{Dijkstras Algorithmus} & Bellmans Optimalitätsprinzip & $O(m+n\log n)$\\
+         \textsc{Moore-Bellman-Ford} & finde den günstigsten Vorgänger & $O(nm)$ \\
+         \midrule
+         \textsc{Shallow-Light-Bäume} & finde MST und Kürzeste-Wege-Baum, veroppele alle Kanten in MST, finde eulerschen Spaziergang. Ist Distanz größer als in dem KWB, so füge den kürzesten Weg hinzu & $O(m+n\log n)$ \\
+         \midrule
+         \textsc{Minimum-Mean-Cycle} & optimiere Differenzen & $O(nm)$ \\
+         \midrule
+         \textsc{Ford-Fulkerson} & finde beliebige augmentierende Flüsse & quasi-polynomiell \\
+         \textsc{Edmonds-Karp} & finde den kürzesten augmentierenden Fluss & $O(n m^2)$ \\
+         \textsc{Dinics Algorithmus} & finde blockierende Flüsse & $O(n^2)$\\
+         \textsc{Push-Relabel} & Levels & $O(n^2\sqrt{m})$\\ 
+         \midrule
+         Nagamochi Ibaraki & & \\
+         Karger Stein & & \\
+         Minimum-Mean-Cycle-Cancelling-Algorithmus & & \\
+         \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Verwirrte Definitionen}
+
+Etwas von mir: Unterscheidung zwischen 
+\begin{outline}
+    \1 Kantenfolge/Kantenzug 
+        \2 eine nicht leere Folge $v_1,e_1,v_2\ldots v_k, v_{k+1}$, 
+        \2 minimum eine Kante,
+    \1 Spaziergang
+        \2 ohne wiederholte Kanten,
+    \1 Weg
+        \2 ohne wiederholte Knoten,
+    \1 Kreis
+        \2 geschlossener Weg,
+        \2 minimum zwei Knoten,
+    \1 vollständiger Graph $K_n$ 
+        \2 je zwei Knoten verbunden,
+        \2 einfach, definiert ab $n\geq 1$.
+    \1 vollständiger bipartiter Graph $K_{n,m}$
+        \2 je zwei Knoten aus $\{1,..,n\}$ und $\{n+1,..,n+m\}$ sind verbunden,
+        \2 definiert für $n\geq 1$ oder $m\geq 1$.
+    \1 Wald
+        \2 ungerichteter Graph ohne Kreise
+    \1 Baum
+        \2 zusammenhängender Wald
+    \1 Branching
+        \2 directed forest + each vertex has max 1 incoming edge
+    \1 Arboreszenz
+        \2 directed tree
+\end{outline}
+
+\section{Witzige Eigenschaften}
+\begin{outline}
+    \1 bipartite Graphen
+        \2 $G$ bipartit $\iff$ enthält keinen ungeraden Kreis
+    \1 Baum
+        \2 ungerichtet, zusammenhängend und azyklisch
+        \2 mindestens zwei Knoten mit Ausgangsgrad $0$ 
+    \1 Präprozessing für Graphen
+        \2 für viele Graphenalgorithmen kann man annehmen, dass $G$ einfach und zusammenhängend ist, somit $n - 1 \leq m < n^2$
+\end{outline}
+
+\subsection{Laufzeiten für Basisoperationen auf Graphen}
+
+Eine Adjazenzmatrix $(a_{ij})_{1\leq i,j\leq n}$ beschreibt den Graphen $G$ mit $a_{ij}=1$ falls $\{i,j\}\in E(G)$ und sonst $0$.
+
+Eine Adjazenzliste ist eine Liste von Listen in der $n$-te Liste den $n$-ten Knoten repräsentiert und Informationen über seine Nachbarn speichert.
+
+\begin{center}
+\begin{tabular}{ c c c } 
+    & Adjazenzmatrix & Adjazenzliste \\
+    \hline
+    Speicherplatz & $O(n^2)$ & $O(n+m)$ \\ 
+    Kanten einfügen & $O(1)$ & $O(1)$ \\ 
+    Knoten einfügen & $O(n)$ & $O(1)$ \\
+    Kanten löschen  & $O(1)$ & $O(1)^*$\\
+    Knoten löschen  & $O(n)$ & $O(n)$ \\
+    \end{tabular}
+\end{center}
+$^*$ -- geht nur mit doppelt verketteten Listen und ist eher aufwendig + nervig.
+
+\section{Vorlesungsstoff}
+\marginnote[0pt]{Vorlesung 1, 10.10.23}
+\subsection{Euler und Hamilton}
+\begin{outline}
+    \1 Eulerscher Spaziergang 
+        \2 geschlossen, enthält jede Kante genau einmal ohne Wiederholung,
+        \2 notwendige und hinreichende Bedingung (Euler, 1736):\\
+        $G$ hat eulerschen Spaziergang $\iff$ $G$ eulersch.
+            \3 $G$ eulersch, wenn jeder Knoten geraden Grad hat.
+        \2 \textsc{Eulers Algorithmus}, Laufzeit $O(m)$,
+            \3 starte mit Knoten $v_0$, finde einen Kreis $v_0,v_1,\ldots,v_n$ und entferne die Kanten aus $G$
+            \3 Knoten $v_1, ... , v_n$ haben immer noch geraden Grad, rekursiv für jeden Knoten auf dem Kreis finde geschlossenen Kreis/Spaziergang, entferne ihn (somit bleibt der Graph immer noch eulersch) und wiederhole solange es noch Kanten vorhanden sind. Am Ende füge alle Kreise/Spaziergänge in der richtigen Reihenfolge zusammen
+            \3 findet Zerlegung von $G$ in Kreise
+\marginnote[0pt]{Vorlesung 2, 12.10.23}
+    \1 Hamiltonkreis
+        \2 enthält jeden Knoten genau einmal ohne Wiederholung,
+        \2 hinreichende Bedingung (Dirac, 1952):\\
+        $G$ einfacher ungerichteter Graph mit $\min \{\delta(v) \mid v \in V(G)\} \geq \frac{n}{2}$.\\
+        Gegenbeispiel: ein Kreis der Länge 100.
+\end{outline}
+\subsection{Zusammenhang}
+\begin{outline}
+    \1 Schwacher Zusammenhang in Graphen 
+        \2 BFS, DFS, lineare Laufzeit
+    \1 Starker Zusammenhang in Graphen
+        \2 \textsc{Strongly Connected Component Algorithm}, Laufzeit $O(n+m)$.
+            \3 zweimaliges DFS über alle Zshgskomponenten mit Labels
+            \3 post-order,
+            \3 bestimmt topologische Ordnung bei Kontraktion von den starken Zusammenhangskomponenten,
+            \3 entscheidet ob topologische Ordnung existiert $\iff$ starke Zusammenhangskomponenten bestehen aus einelementigen Mengen (sonst existiert ein Kreis)
+\end{outline}
+
+\subsection{Aufspannende Bäume und Arboreszenzen}
+\marginnote[0pt]{Vorlesung 3, 17.10.23}
+\begin{outline}
+    \1 Satz von Cayley 
+        \2 Anzahl der aufspannenden Bäume in $K_n = n^{n-2}$
+        \2 häufig interessieren wir uns für \textbf{einen} optimalen aufspannenden Baum aus $n^{n-2}$
+        \2 Anzahl Branchings in $K_n = (n+1)^{n-1}$
+    \1 Äquivalente Aussagen zu $T$ minimaler aufspannender Baum
+        \2 für jede Kante $\{x,y\}$ nicht in $T$, gilt: jede Kante auf dem $x-y$-Weg in $T$ hat niedrigere Kosten
+        \2 für jede Kante $e$ in $T$ gilt: $e$ ist die kostenminimale Brücke zwischen den zwei Zshgskomponenten in $T-e$  
+        \2 alle Kanten $\{e_1\ldots e_n\}$ in $T$ können so angeordnet werden, dass jedes $e_i$ jeweils in einem Schnitt $X$ von $G$ minimal ist und \textbf{nicht} mit $e_j$ konkurriert
+    \1 Algorithmen für \textsc{Minimum Weight Spanning Tree}
+        \2 \textsc{Kruskals Algorithmus}, Laufzeit $O(m\log n)$
+            \3 sortiere die Kanten und füge die minimalen Kanten hinzu
+            \3 $O(m \log n)$ geht wenn wir Branchings und die Länge des längsten Weges in den Arboreszenzen merken. Sollten zwei Arboreszenzen zusammgefügt werden, so wird $A$ zu $A'$ hinzugefügt, falls $l(A) < l(A')$.
+        \2 \textsc{Prims Algorithmus}, Laufzeit $O(m+n^2)$
+            \3 wähle einen Knoten $v$ und füge immer minimale erreichbare Kanten hinzu 
+            \3 mit Fibonacci-Heap in $O(m+n \log n)$
+\marginnote[0pt]{Vorlesung 4, 19.10.23}
+    \1 Reduzierbarkeit
+        \2 Maximum Weight Forest $\iff$ Minimum Spanning Tree
+            \3 Delete edges with negative costs, add minimal amount of edges such that $G$ connected, multiply all costs with $-1$. Find MST, delete all previously added edges, get MWF.
+            \3 Invert costs $c'=c+K>0$ and find MWF. Since any solution of MWF is a tree, get MST.
+        \2 Maximum Weight Branching $\iff$ Minimum Weight Arborescence $\iff$ Minimum Weight Rooted Arborescence
+            \3 MWA-MWB: invert costs $c'=c+K>0$ and find MWB, get MWA.
+            \3 MWB-MWRA: add vertex $r$ connected to every vertex. Invert costs. Arborescence in $r$ is solution for MWB.
+            \3 MWRA-MWA: add vertex $s$ connected only to $r$. Any solution to $MWA$ starts from $s$, delete edge $(s,r)$ and get MWRA.
+\end{outline}
+\marginnote[0pt]{Vorlesung 5, 24.10.23}
+\begin{outline}
+    \1 Fibonacci-Heap $(U, E)$
+        \2 Fibonacci, weil Wurzel in der Arboreszenz hat $k$ Kindern $\implies$ Arboreszenz enthält mindestens Fibonacci$(k+1)$ viele Knoten ($1,1,2,3,5,8,\ldots$)
+        \2 ein Branching $(U,E)$ mit Markierung $\phi: U \rightarrow\{0,1\}$ 
+        \2 hat vier Eigenschaften
+            \3 je höher die Kante im Baum, desto kleiner der Key
+                \4 $(u,v)\in E \iff \key(u) \leq \key(v)$
+                \4 garantiert gute Laufzeit für \textsc{DeleteMin}, da man nur über Wurzeln der Arboreszenzen sucht
+            \3 Nachkommenschaft-Garantie 
+                \4 $|\delta^+(v)|+\phi(v) \geq i-1$
+                \4 verhindert zu tiefe Bäume
+                \4 $\phi$ kompensiert ein verlorenes Kind 
+                \4 Wurzeln haben exponentiell viele Nachkommen in der Anzahl von Kindern
+            \3 Wurzeln dürfen nicht dieselbe Kinderanzahl haben    
+                \4 verhindert zu viele Bäume
+            \3 Jede Wurzel hat mindestens $\sqrt{2}^k$ Nachkommen
+                \4 folgt aus 2.ter Eigenschaft
+                \4 impliziert Existenz von höchstens $2\log_2 p +1$ Wurzeln gibt
+        \2 technische Umsetzung
+            \3 Speichere Wurzeln in $b:=\{0,1,2, \ldots, \lfloor 2\log_2 p\rfloor\}\rightarrow U$ mit $b(k)=u$ falls $u$ Wurzel und $k$ Kinder hat 
+                \4 Umkehrung gilt nicht, weil zwei Knoten können durchaus denselben Grad haben, müssen nur entscheiden, wer Wurzel wird
+                \4 wegen $\phi$ kann die Anzahl an Kindern $k-1$ sein
+            \3 doppelt verkettete Liste der Kinder jedes Elements 
+                \4 damit delete in $O(1)$ läuft
+            \3 Pointer zum Eltern
+            \3 den Ausgangsgrad jedes Elementes
+        \2 $\textsc{Insert}(r, \key(r))$
+            \3 $\phi(r) = 0$
+            \3 insert den Knoten $r$ in die Liste $b$ an geeigneter Stelle
+            \3 falls besetzt von $v$ dann verbinde Arboreszenzen je nach $\key(v), \key(r)$ und füge die neue Arboreszenz in $b$ wieder ein. 
+            \3 Laufzeit $O(1)$
+            \3 erfolgt rekursiv
+        \2 $\textsc{DeleteMin}$
+            \3 durchlaufe $b$ und finde Wurzel mit $\min \key(r)$
+            \3 entferne $r$ und reinsert alle Waisen
+            \3 Laufzeit $O(\log n)$
+        \2 $\textsc{DecreaseKey}(v,\key(v)$
+            \3 problematisch, wenn die $1$.te Bedingung verletzt wird
+            \3 finde den längsten Weg $P$ zu $v$ so dass jede Kante $u$ auf dem Weg $\phi(u)=1$ hat
+            \3 invertiere Werte von $\phi$ für Knoten in $P$
+            \3 lösche alle Kanten in $P$
+            \3 replante alle Waisen
+            \3 $\phi(x)$ ist die Kompensation für verlorenes Kind damit $2$.te Bedingung nicht verletzt wird
+            \3 gleichzeitig auch Markierung dass ein Kind nur einmal weggenommen werden kann 
+        \2 Laufzeiten $O(m+p+n \log p)$ 
+\end{outline}
+\marginnote[0pt]{Vorlesung 6, 26.10.23}
+\begin{outline}
+    \1 Algorithmen für \textsc{Maximum Weight Branching}
+        \2 \textsc{Karp's Algorithmus} 
+        \marginnote[0cm]{Das ist natürlich kein Algorithmus, sonder beschreibt einen möglichen Lösungsansatz für dieses Problem.}
+            \3 Idee: für jeden Knoten nehme die Kante mit maximalem Gewicht
+            \3 Problem: es können Kreise entstehen, also es muss mindestens eine Kante gelöscht werden.
+            \3 Lösung: nach Karp's Lemma reicht es, bereits eine Kante zu löschen
+        \2 Karp's Lemma
+            \3 Idee 1: Branching $B$ = underlying graph has no circles + max 1 incoming edge. Relax the condition to allow circles. Then $MWB$ is containted in a maximum weight graph $B_0$ such that for any circuit in $B_0$, all but one edge is contained in $B$
+            \3 Idee 2: es ist naheliegend, einfach die schwerste Kante zu wählen. Der resultierende Graph kann enthalten Kreise. Das Lemma sagt, es reicht, eine Kante aus den Kreisen zu entfernen, um ein optimales Branching zu bekommen.
+        \2 \textsc{Edmond's Branching-Algorithmus}
+            \3 Idee: Finde $B_0$ und kontrahiere alle Kreise zu einem Graphen $B_1$. Wähle Gewichte in $B_1$ so, dass optimaler Branching in $B_1$ optimal in $B_0$ ist.
+\end{outline}
+
+\subsection{Kürzeste Wege von einem Knoten aus}
+\begin{outline}
+    \1 Preliminaries:
+        \2 Bellmans Optimalitätsprinzip $\iff$ optimale Entscheidungsfolgen sind im jeden Schritt optimal
+    \marginnote[-1cm]{Unsere Algorithmen basieren sich im Wesentlichen auf diesem Prinzip}
+        \2 konservative Gewichte $c' \iff$ es existiert kein Kreis negatives Gewichts
+
+\marginnote[0pt]{Vorlesung 7, 31.10.23}    
+
+    \1 Algorithmen für \textsc{Shortest Path Problem}
+        \2 \textsc{Dijkstra's Algorithmus}
+            \3 Gewichte $\geq 0$
+            \3 Laufzeit $O(m+n^2)$ naiv, $O(m+n\log n)$ mit Fibonacci-Heaps
+        \2 \textsc{Moore-Bellman-Ford Algorithmus}
+            \3 beliebige Gewichte
+            \3 finde den günstigsten Vorgänger + überprüfe final ob negative Zyklen existieren
+            \3 Laufzeit $O(mn)$
+    
+    \1 Die Algorithmen finden auch kürzeste Wege Bäume bzw. Arboreszenzen ausgehend vom Anfangsknoten $s$
+\end{outline}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{m{2.5cm} m{2.5cm} m{5cm}}
+        \toprule
+         & gerichtet & ungerichtet  \\
+         \midrule
+         Gewichte $=1$ & BFS & BFS \\
+         Gewichte $\geq 0$ & Dijkstra & Dijkstra mit Kanten in beide Richtungen \\
+         konservative Gewichte & MBF & Masterstudium*\\
+         beliebige Gewichte & NP-schwer & NP-schwer\\ 
+         \bottomrule
+    \end{tabular}
+    \caption{Übersicht Algorirthme für kürzeste-Wege-Problem}
+\end{table}
+
+\marginnote[-2cm]{* -- aus sdfsdfeiner negativen Kante entstehen zwei Kanten in beide Richtungen, MBF returns negativen Kreis}
+
+\marginnote[0cm]{8. Vorlesung, 02.11.23}
+
+\subsection{Shallow-Light Bäume}
+
+Diese Bäume sind ein Trade-off zwischen einem minimalen aufspannenden Baum und kürzeste-Wege-Baum von $r$ aus. Das Ziel ist quasi ein MST, dessen längster Weg um maximal $1+\epsilon$ von dem optimalen abweicht. 
+\begin{outline}
+    \1 Algorithm für \textsc{Shallow-Light Baum}
+        \2 Annahmen: ungerichtet, einfach
+        \2 Berechne den MST und den kürzeste-Wege-Baum
+        \2 Verdoppele alle Kanten im MST und finde eulerschen Spaziergang 
+        \2 Gehe entlang des eulerschen Spaziergangs
+            \3 Falls zu einem Zeitpunkt $t$ die Kosten des aktuellen Weges die $1+\epsilon$ Kosten des kürzesten Weges übersteigen, dann füge diesen kürzesten Weg zum Graphen hinzu. 
+\end{outline}
+
+\subsection{Kürzeste Wege zwischen allen Knotenpaaren}
+
+\begin{outline}
+\1 $c$ konservativ $\iff$ existiert kein negativer Kreis $C \iff$ existiert zulässiges Potential $\pi$
+    \2 zulässiges Potential $\pi: V(G) \rightarrow \R \iff c_\pi$ nicht negativ für alle Kanten
+    \2 reduzierte Kosten $c_\pi(e)=c(e)+c_\pi(x)-c_\pi(y)$
+        \3 Kosten eines Kreises $c_\pi(C)=c(C)$
+        \3 Kosten eines Weges $c_\pi(P)=c(P)+c(v_0)-c(v_n)$
+    \2 $\pi$ mit MBF in $O(nm)$ berechenbar
+        \3 dafür setze $\pi(v)=l(v)$
+        \3 in MBF, $l(y)\geq l(x) + c(e) \implies c(e)+l(x)-l(y) \geq 0$
+\marginnote[-1cm]{Diese Kosten sind nicht wirklich "reduziert".}
+
+    \1 \textsc{All Pairs Shortest Paths Problem}
+        \2 Laufzeit $O(mn+n(m+n\log n)$
+            \3 zuerst mit MBF zulässiges Potential $\pi$ berechnen
+            \3 auf dem Graphen mit reduzierten Kosten $n$-mal Dijkstra anwenden $\implies$ wegen $\pi$ sind die Kantengewicht nicht negativ.
+        \2 Anwendungsbeispiel: metrischer Abschluss von $(G,c)$
+            \3 einfacher Graph $(\overline{G}, \overline{c})$, dessen Kanten $(x,y)$ kürzeste-Wege-Gewichte sind (und existieren)
+\end{outline}
+
+\subsection{Minimum Mean Cycle Problem}
+\begin{outline}
+    \1 \textsc{Directed Minimum Mean Cycle Problem} 
+        \2 finde Kreis mit minimalen Durchschnittsgewicht der Kanten $\mu(G,c)$ oder entscheide, dass $G$ azyklisch ist. 
+    \1 Satz (Karp, 1978)
+        \2 alle Kanten sind von $s$ aus erreichbar,
+        \2 Kantenfolge $F_k(x)$ der Länge $k$ mit kleinsten Kosten von $x$
+        \2 für jedes $k$ betrachte $\{ \frac{F_n(x)-F_1(x)}{n-1}, \frac{F_n(x)-F_2(x)}{n-2},\ldots,\frac{F_n(x)-F_{n-1}(x)}{n-1} \}$
+        \2 sei $M(x)$ das Maximum dieser gewichteten Differenzen, dann gilt $\mu(G,c) = \max_{x\in V(G)} M(x)$ 
+\marginnote[0cm]{9. Vorlesung, 07.11.23}
+    \1 \textsc{Minimum-Mean-Cycle-Algorithmus}
+        \2 Laufzeit $O(mn)$
+            \3 füge einen Knoten $s$ mit Nullkanten zu jedem Knoten in $G$
+            \3 setze $F_0 (s) = 0, F_0(x)=\infty$
+            \3 für $1\ldots i\ldots n$ nehme Kanten mit $F_{i-1}(x)<\infty$, finde minimale Kante von $w$ nach $x$
+            \3 speichere die Kante und den Vorgänger 
+            \marginnote[-3cm]{Wir gehen den Graphen in Stufen Schritt für Schritt durch und nehmen jedes Mal die kleinste Kante $\implies$ Minimieren über $x$. Wie cascading waterfall.}
+            \3 berechne $\max$ Differenz zwischen $F_n(x)-F_k(x)/(n-k)$ für jeden Knoten
+            \3 $C$ ist irgendein Kreis aus $p^n(x),p^{n-1}(x),\ldots$
+            \3 falls azyklisch, so hat der längste Weg die Länge $n-1 \implies$ $F_n(x)=\infty$ für alle Knoten
+\end{outline}
+
+\subsection{Maximale Flüsse I}
+\begin{outline}
+\0 Gegeben ist immer $(G,u,s,t)$, wobei $G$ gerichteter Graph, $u$ die Kapazität von Kanten, $s$ Quelle und $t$ Target ist. 
+\marginnote[-0.5cm]{$u$ steht für upper bound}
+    \1 \textsc{Maximum Flow Problem}
+        \2 Gegeben $(G,u,s,t)$ finde maximalen Fluss von $s$ nach $t$
+    \1 Max-Flow-Min-Cut-Theorem
+        \2 Der Wert von maximalem Fluss von $s$ nach $t$ ist gleich dem Wert des minimalen $s$-$t$-Schnittes
+\marginnote[0cm]{10. Vorlesung, 09.11.23}
+    \1 \textsc{Ford-Fulkerson-Algorithmus}
+        \2 nur für positive rationale Kapazitäten
+        \2 Laufzeit $O(??)$
+            \3 finde einen Fluss von $s$ nach $t$
+            \3 finde eine Bottleneck-Kante $e$
+            \3 augmentiere $f$ um die Residualkapazität von $e$ und starte neu
+\0 Ein Struktursatz für maximale Flüsse:
+    \1 Flussdekompositionssatz
+        \2 jeder Fluss lässt sich als Summe von Elementarwegen und Kreisen darstellen
+            \3 Elementarweg $=$ konstanter $s$-$t$-Weg
+            \3 Elementarkreis $=$ konstanter Kreis in $G$
+\end{outline}
+
+\subsection{Sätze von Menger}
+
+\begin{outline}
+\0 Hat ein Graph alle Kanten mit Kapazität $1$, so hat ein ganzzahliger Fluss eine Zerlegung in kantendisjunkte Wege und Kreise. Das motiviert die folgenden Sätze.
+    \1 Satz von Menger 1:
+        \2  $k$ kantendisjunkte Wege $\iff$ nach $k-1$ entfernten Kanten bleibt $t$ erreichbar
+    \1 Satz von Menger 2
+        \2 $s$ und $t$ nicht benachbart
+        \2 $k$ intern kantendisjunkte Wege $\iff$ nach $k-1$ entfernten Knoten bleibt $t$ erreichbar
+\marginnote[0cm]{11. Vorlesung, 14.11.23}
+\0 Ein wichtiges Korollar aus den Sätzen, für \textbf{ungerichtete} Graphen + neue Vokabeln:
+    \1 $G$ hat mehr als zwei Knoten:
+        \2 $k$-kantenzusammenhängend $:=$ zusammenhängend ohne $k-1$ belieibige Kanten
+        \2 $k$-\textit{kanten}zusammenhängend $\iff$ existieren $k$-\textit{kanten}disjunkte Wege
+    \1 $G$ hat mehr als $k$ Knoten:
+        \2 $k$-zusammenhängend $:=$ zusammenhängend ohne $k-1$ beliebige Knoten
+        \2 $k$-zusammenhängend $\iff$ existieren $k$ intern disjunkte Wege
+            \3 intern disjunkt $=$ kantendisjunkt + innere Knoten disjunkt
+    \1 Knotenzusammenhang, Kantenzusammenhang $:= \max \{k\in \N \cup \{0\} \mid G \text{ ist $k$-(kanten-)zusammenhängend}\}$
+    \1 es gilt immer Knotenzusammenhang $\leq$ Kantenzusammenhang
+    \1 Block 
+        \2 maximal zusammenhängende Graphen ohne \textit{Artikukationsknoten}
+        \2 Klassifikation von Blöcken
+            \3 maximaler $2$-zusamenhängender Teilgraph
+            \3 Brücke
+            \3 isolierter Knoten
+            \3 $\implies$ zwei Blöcke haben höchstens einen gemeinsamen Knoten
+\marginnote[-0.5cm]{Artikulationsknoten = Brücke in Knotenversion}
+
+\0 Ein Struktursatz für $2$-zusammenhängende Graphen
+    \1 Ungerichteter Graph $2$-zusammenhängend $\iff$ hat echte Ohrenzerlegung
+        \2 Ohrenzerlegung $=$ eine Folge $(r, \emptyset) + P_1 + P_2 + \ldots + P_k = G$
+            \3 induktive Zerlegung von $G$ in Ohren $P_k$, $r$ ist der Anfangsknoten
+            \3 jedes Ohr $P_k$ ist entweder
+                \4 ein Weg mit Anfangs- und Endknoten in $P_{i<k}$
+                \4 ein Kreis mit genau einem Knoten in $P_{i<k}$
+                \4 $P_0 := (r,\emptyset)$
+            \3 alternativ ist $P_k$ ein (maximaler) Weg oder ein Kreis $P$, in dem interne Knoten Grad $2$ haben und Anfangs- und Endknoten Grad $\geq 3$ haben
+        \2 echte Ohrenzerlegung
+            \3 $P_1$ ist ein Kreis und $P_{i>1}$ sind Wege
+    \1 Aus der Übung:
+\end{outline}
+
+\subsection{Maximale Flüsse II}
+
+\begin{outline}
+\0 Mit \textsc{Ford-Fulkerson} haben wir beliebige augmentierende $s$-$t$-Wege betrachtet. Wir sollten aber die kantenminimale augmentierenden Wege betrachten. Erzielen Verbesserung weil polynomielle Laufzeit.
+    \1 \textsc{Edmonds-Karp-Algorithmus}
+        \2 nur für positive reelle Kapazitäten
+        \2 wie \textsc{Ford-Fulkerson}, nur mit BFS
+        \2 Laufzeit $O(nm^2)$
+            \3 Algorithmus terminiert nach höchstens $\frac{nm}{2}$ Augmentierungen
+            \3 Jede Augmentierung hat Laufzeit $O(m)$
+\marginnote[0cm]{12. Vorlesung, 16.11.23}
+
+\0 Die Idee von \textsc{Dinic's Algorithmus} ist, dass wir nicht entlang eines Weges, sondern entlang eines Flusses augmentieren. Dafür müssen wir aber gewisse neue Begriffe einführen: 
+    \1 $s$-$t$-Präfluss := Fluss, aber $ex(v)$ darf größer 0 sein
+        \2 \textit{aktiver} Knoten $\iff ex(v) > 0$ und $v\neq s,t$
+    \1 $s$-$t$-Fluss blockierend := der Graph $G$ mit nicht saturierten Kanten enthält keinen $s$-$t$-Weg
+        \2 Abschwächung von augmentierendem Fluss (ohne Rückwartskanten)
+        \2 maximaler Fluss ist blockierend, aber Umkehrung gilt nicht 
+        \2 hier noch etwas falsch, siehe Shimon p. 95
+        
+\marginnote[-2.5cm]{ Beispiel zu einem blockierenden, nicht maximalen $s$-$t$-Fluss:
+    \[\begin{tikzcd}[ampersand replacement=\&,cramped]
+	\&\& \bullet \\
+	s \&\&\&\& t \\
+	\&\& \bullet
+	\arrow["{0/1}"{description}, from=2-1, to=3-3]
+	\arrow["{1/1}"{description}, color={rgb,255:red,214;green,92;blue,92}, from=2-1, to=1-3]
+	\arrow["{0/1}"{description}, from=1-3, to=2-5]
+	\arrow["{1/1}"{description}, color={rgb,255:red,214;green,92;blue,92}, from=3-3, to=2-5]
+	\arrow["{1/1}"{description}, color={rgb,255:red,214;green,92;blue,92}, from=1-3, to=3-3]
+\end{tikzcd}\]
+}
+    \1 Level-Graph $G^L_f :=$ der Graph der kürzesten Wege in $G_f$, ausgehend von $s$
+        \2 in linearer Zeit mit BFS berechenbar
+        \2 azyklisch, keine Kante kann Levels überspringen
+        \2 definiert topologische Ordnung auf $G$, wobei $s$ ganz links und $t$ ganz rechts stehen
+        \2 \textbf{wichtig:} für max. Fluss reicht, einen blockierenden Fluss in $G^L_f$ zu finden
+
+\marginnote[-1cm]{Beispiel zu einem Level-Graph $G^L_f$: 
+\[\begin{tikzcd}[ampersand replacement=\&,cramped,sep=tiny]
+	\&\&\& \bullet \&\& \bullet \& \ldots \\
+	{} \& s \\
+	\&\&\& \bullet \&\& \bullet \& \ldots \\
+	\& {\text{Level }0} \&\& {\text{Level } 1} \&\& {\text{Level }2}
+	\arrow[from=1-4, to=1-6]
+	\arrow[from=3-4, to=3-6]
+	\arrow[from=1-4, to=3-6]
+	\arrow[from=2-2, to=1-4]
+	\arrow[from=2-2, to=3-4]
+\end{tikzcd}\]
+}
+
+    \1 \textsc{Dinic's Algorithmus}
+        \2 finde $G^L_f$ mit BFS in $O(m)$
+        \2 finde blockierenden Fluss $f'$ in $G^L_f$ in $O(n^2)$
+            \3 \textsc{Push:} scanne die Knoten nach topologischer Ordnung (in $G^L_f$) und pushe so viel wie möglich von links nach rechts
+            \3 \textsc{Balancing:} nehme rechtesten aktiven Knoten $v$, schicke $ex(v)$ zurück, markiere als geschlossen, wiederhole.
+            \3 augmentiere $f$ entlang $f'$
+            \3 terminiert nach $O(n)$ Iterationen, da mindestens ein Knoten als geschlossen markiert wird.
+        \2 ist $f'=0$, so sind wir fertig, sonst starte neu
+        \2 Laufzeit $O(n^3)\leq O(nm^2)$
+            \3 Algorithmus terminiert nach höchstens $n$ Augmentierungen (Gewinn Faktor $O(m)$ im Vergleich zu \textsc{Edmonds-Karp})
+            \3 es gibt mehrere Ansätze, wie man den blockierenden Fluss findet. Die Laufzeit ergibt sich dann im Wesentlichen aus $O(n)\cdot O($blockierenden Fluss finden).
+            \3 geht in $O(n^2)$ mit Ansatz von Karzanov; siehe zwei Beweise in der Mitschrift oder S. 196-198 im Buch
+            
+\marginnote[0cm]{13. Vorlesung, 21.11.23}
+
+\0 Wir lernen $\textsc{Push-Relabel-Algorithmus}$ kennen. Wie immer, werden zuerst einige neue Definitionen und Lemmas eingeführt. 
+
+\1 $s$-$t$-Präfluss $f$ ist ein maximaler $s$-$t$-Fluss, wenn
+    \2 es gibt keinen aktiven Knoten und
+    \2 es gibt keinen augmentierenden $s$-$t$-Fluss in $G_f$
+
+\marginnote[-1cm]{ Alle bisherigen Algorithmen haben Bedingung $1$ stets erfüllt und terminierten wenn Bedingung $2$ erfüllt wurde. \textsc{Push-Relabel} erfüllt stets Bedingung 2 und terminiert bei Bedingung 1}
+
+\1 Distanzmarkierung $\psi$ bezüglich $s$-$t$-Präflusses $f$
+    \2 $\psi(s)=n$, $\psi(t)=0$
+    \2 für Kante $e=(v,w)$ gilt: $\psi(v) \leq \psi(w) + 1$
+        \3 jede Kante kann maximal um 1 absteigen 
+        \3 Kanten die um 1 absteigen sind \textit{erlaubte} Kanten
+    \2 impliziert, dass es nie einen $s$-$t$-Weg in $G_f$ gibt, da der längste Weg nur um $n-1$ absteigen kann und nicht um $n$. Die Bedingung 2 ist also stets erfüllt und wir arbeiten nur daran, den Überschuss zu verteilen.
+
+\1 \textsc{Push-Relabel-Algorithmus}
+    \2 Laufzeit $O(n^2\sqrt{m})\leq O(n^3)$
+    \2 Initialisierung:
+        \3 $\psi(s)=n, \psi(v)=0$ sonst
+        \3 saturiere alle aus $s$ ausgehende Kanten
+        \3 $G_f$ hat keine $(s,v)$ Kanten, nur Rückwartskanten $(v,s)$
+        $\implies$ Distanzinvariante ist nicht verletzt
+    \2 Main Loop:
+        \3 solange es einen aktiven Knoten $v$ gibt, wähle $v$ mit maximalem $\psi(v)$
+        \3 falls existiert aus $v$ ausgehende und erlaubte Kante $e$ \textsc{Push($e$)}
+            \4 setze $\Delta = \min \{ $Restkapazität von $e$, Überschuss $v\}$
+            \4 augmentiere $f$ entlang $e$ um $\Delta$
+        \3 sonst \textsc{Relabel(v)}
+            \4 erhöhe $\psi(v)$ um $1$
+
+\end{outline}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{m{2.5cm} m{5cm} m{2.5cm}}
+        \toprule
+         & Idee & Laufzeit  \\
+         \midrule
+         Ford-Fulkerson & augmentiere entlang eines beliebigen Flusses & quasi-polynomiell \\
+         Edmonds-Karp & augmentiere entlang des kürzesten Flusses & $O(n m^2)$ \\
+         Dinic & augmentiere blockierende Flüsse & $O(n^3)$\\
+         Push-Relabel &  & $O(n^2\sqrt{m})$\\ 
+         \bottomrule
+    \end{tabular}
+    \caption{Übersicht Algorithme für Maximum-Flow-Probleme}
+\end{table}
+
+\subsection{Minimale Schnitte (ungerichtet)}
+
+\marginnote[0cm]{14. Vorlesung, 23.11.23}
+
+\begin{outline}
+\0 Eine leichte  \textsc{Max-Flow}-Variation. In der Vorlesung wird vor allem der ungerichtete Fall behandelt, da die Ungerichtheit (?) sich gut \enquote{ausnutzen} lässt.
+
+    \1 \textsc{Min $s$-$t$-Cut Problem}
+        \2 finde $X\subset V(G)$ mit minimaler Kapazität $u(\delta(X))$  
+        \2 Laufzeit wie \textsc{Max-Flow} (insb. $O(n^2\sqrt{m})$)
+            \3 im gerichteten Fall finde Max-Flow $f$ und wähle $X =$ von $s$ aus in $G_f$ erreichbare Knoten 
+                \4 funktioniert, weil nach Augmentierung $G_f$ nicht zusammenhängend ist
+            \3 im ungerichteten Fall füge zwei gerichtete Kanten $(v,w)$, $(w,v)$ für jede ungerichtete Kante $\{v,w\}$, dann wie oben
+
+%    \1 Sei $G$ ungerichtete mit nicht-negativen reellen Kapazitäten
+    \1 lokaler Kantenzusammenhang $\lambda_{s,t}$
+        \2 minimale Kapazizät eines $s$ und $t$ trennenden Schnittes 
+        \2 im Fall $u=1$ ist gleich Anzahl der disjunkten $s$-$t$-Wege 
+        \2 es gilt \enquote{Dreiecksungleichung} $\lambda_{ik} \geq \min (\lambda_{ij},\lambda_{jk})$
+    \1 minimale Kapazität $\lambda(G)$ eines Graphen
+        \2 Minimum über alle $\lambda_{s,t}$
+        \2 im Fall $u=1$ ist gleich Kantenzusammenhang
+    \1 naive Lösungsansätze für Berechnung von $\lambda(G)$
+        \2 berechne $\lambda_{s,t}$ für alle $\binom{n}{2}$ Paare $\implies \binom{n}{2}$ Max-FLow  
+        \2 berechne $\lambda_{s,t}$ für $s$ fix $\implies (n-1)$ Max-Flow
+    \1 Algorithmus von Nagamochi und Ibaraki
+        \2 schneller als ein einziger Max-Flow $O(mn+n^2\log n)\leq O(n^2\sqrt{m})$, 
+        \2 MA-Reihenfolge (maximum adjacency)
+            \3 skipped
+    \1 Algorithmus von Karger und Stein (Übung)
+            \2 kontrahiere zufällige Kanten gewichtet nach Kapazität solange nur zwei Knoten geblieben sind
+            \2 diese zwei Knoten repräsentieren einen Schnitt in $G$
+            \2 wiederhole $k$-mal und wähle das Minimum
+\end{outline}
+
+\subsection{Kostenminimale Flüsse}
+\marginnote[0cm]{15. Vorlesung, 28.11.23}
+
+\begin{outline}
+    \0 Für ein gegebenes Problem gibt es viele Matchings. Wir wollen das optimale Matching in Bezug auf eine Kostenfunktion $c$ finden. 
+        \1 Beispiele sind:
+            \2 Kürzeste-Wege-Problem 
+                \3 setze $c=1$, dann minimaler Fluss = kürzester Weg
+            \2 Max-Flow 
+                \3 setze $c=0$, füge Kante $(t,s)$ mit negativen Kosten hinzu, dann minimaler Fluss = Max-Flow
+            \2 Min-Cost-Bipartites-Matching
+    \1 \textsc{Minimum-Cost-Flow-Problem}
+        \2 Instanz $(G,u,b,c)$
+            \3 gerichteter Graph $G$, Kapazitäten $u$, Balance $b$, Kosten $c$
+\marginnote[0cm]{$b$ \enquote{generiert} bzw. \enquote{absorbiert} flow}
+            \3 Knoten mit $b>0$ (Angebot) sind Quellen, $b<0$ (Nachfrage) sind Senken
+        \2 $b$-Fluss 
+            \3 erfüllt $b(v) = \sum f(\delta^+(v)) - \sum f(\delta^-(v))$ 
+            \3 existiert gdw $\sum u(\delta^+(X)) \geq \sum b(X)$ für alle $X\subset V(G)$
+            \3 statt augmentierender Wege habe augmeniterende Kreise
+        \2 Ziel: finde $b$-Fluss mit geringsten Kosten
+    \1 \textsc{Hitchcock-Problem}
+        \2 Minimum-Cost-Flow-Problem auf einem bipartiten Graph $V=A\cup B$ und $E\subseteq A\times B$ mit Quellen $A$ und Senken $B$
+        \2 äquivalent zu \textsc{Minimum-Cost-Flow-Problem}
+        
+\end{outline}
+
+\marginnote[0cm]{16. Vorlesung, 30.11.23}
+
+\begin{outline}
+    \1 Struktursatz für Zirkulationen:
+        \2 jede Zirkulation lässt sich als Summe von Elementarwegen und Kreisen darstellen
+        \2 Spezialfall Flussdekompositionssatz für $s$-$t$-Flüsse mit Wert $= 0$
+    \1 $f$-augmentierender Kreis
+        \2 ein Kreis in $G_f$
+    \1 Optimalitätskriterium
+        \2 $b$-Fluss $f$ kostenminimal $\iff$ es gibt keinen $f$-augmentierenden Kreis mit negativen Kosten
+        \2 Beweisidee:
+            \3 sei $f$ nicht kostenminimal, dann gibt es $f'$ mit geringeren Kosten. Betrachte Differenzfluss $g=f'-f$ mit $c(g)<0$ und $g$ Zirkulation. Zerlege $g$ in einzelne Kreise, mindestens eins davon ist $f$-augmentierend in $G_f$
+            \3 gibt es einen $f$-augmentierenden Kreis mit negativen Kosten, so können wir entlang des Kreises augmentieren und $f$ war kein kostenminimaler Fluss 
+        \2 äquivalent zur Existenz vom zulässigen Potenzial, da negative Kreise $\iff$ existiert kein zulässiges Potenzial
+        \2 \textit{insgesamt: we care about negative circuits in $G_f$ because they lower the costs of any $b$-flow and they should obviously be $b$-flow-compatible, e. g. delta flow < capacity - flow}
+    \1 \textsc{Minimum-Mean-Cycle-Cancelling-Algorithmus}
+        \2 finde irgendeinen $b$-Fluss
+        \2 finde einen Kreis mit minimalem Durchschnittsgewicht
+        \2 falls der Kreis positives Durchschnittsgewicht hat oder $G_f$ azyklisch ist, dann fertig
+\0 vom Prof: Laufzeitabschätzung im Unterschied zu MaxFlow deutlich schwieriger. Es hat einige Jahrzehnte (Ende der 80er) gedauert, bis ein streng polynomieller Algorithmus überhaupt gefunden wurde. 
+    \1 Laufzeitabschätzung für \textsc{Minimum-Mean-Cycle-Cancelling-Algorithmus}
+        \2 Lemma: Gegeben (G,u,b,c). Sei $f_1,...,f_t$ eine Folge von $b$-Flüssen so dass $f_i+1$ aus $f_i$ entsteht indem wir entlang von $C_i$ ein Kreis mit minimalem Durschschnittsgewicht $\mu(f_i)$ augmentieren. Dann gilt folgendes:
+            \3 das Durchschnittsgewicht steigt oder bleibt gleich
+            \3 blabla wir machen echten Fortschritt
+        \2 Beweis Lemma 9.9 (a):
+\end{outline}
+
+\marginnote[0cm]{Vorlesung 17, 05.12.23}
+
+\begin{outline}
+    \1 Fortsetzung
+        \2 Beweis Lemma 9.9 (b):
+    \1 Lza 2 Beweis 2 für Algorithmus (der erste zeigt schwache polynomielle Laufzeit, der zweite streng polynomielle Laufzeit)
+\end{outline}
+
+\marginnote[0cm]{Vorlesung 18, 07.12.23}
+
+\begin{outline}
+    \1 Satz für \textsc{Sukzessive-Kürzeste-Wege-Algorithmus}
+        \2 gegeben kostenminimaler $b$-Fluss $f$ + kürzester $s$-$t$-Weg $P$ bezüglich $c$ in $G_f$, augmentiere $f$ entlang $P$
+        \2 habe kostenminimalen $b'$-Fluss $f'$ für ein geeignetes $b'$
+    \1 \textsc{Sukzessive-Kürzeste-Wege-Algorithmus}
+        \2 
+    \1 \textsc{Zuordnungsproblem}
+\end{outline}
+
+\subsection{Turingmaschinen, Berechenbarkeit}
+
+\marginnote[0cm]{Vorlesung XX, 09.01.24}
+
+\begin{outline}
+    \1 Alphabet $A$ = $\{0,1\}$, $\overline{A}= A \cup \{\sqcup\}$, String = endliche Folge von Elementen aus $A$, $A^0 = \{\sqcup\}$, $A^1=\{0,1,\sqcup\}$, $A^2 = \{00, 01, 10, 11, 0\sqcup, \ldots\}$, $A^* = \cup_i A^i$, Sprache über $A \subseteq A^*$
+    \1 \textbf{Turingmaschine} ist eine Funktion $\Phi$
+    $$
+    \Phi: \underbrace{\{0,\ldots, N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}}_{\text{Buchstabe}} 
+    \longrightarrow 
+    \underbrace{\{-1,\ldots,N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}}_{\text{Buchstabe}} 
+    \times \underbrace{\{-1,0,1\}}_{\text{backwards, nothing, forwards}} 
+    $$
+    
+        \2 Berechnung von $\Phi$ besteht aus rekursiv definierten Tupeln $(n^i,s^i,\pi^i)$, wobei
+            \3 $i$ = diskrete Zeit, $n^i$ = $i$-ter Befehl, $s^i_{\pi^j}$ = $\pi^j$-te Stelle im String zur Zeit $i$, $\pi^i$ = Position des Lese-Schreib-Kopfes
+            \3 starte mit $(n^0,s^0,\pi^0)=(0,x,1)$
+            \3 $\Phi(n^i,s^i_{\pi^i})=(n^{i+1},s^{i+1}_{\pi(i)}, \pi^{i+1}-\pi^i)$
+    \1 \textbf{Berechungsproblem} = ein Paar $(X,R)$, wobei zu jedem $x \in X$ ein $y\in A^*$ mit $(x,y)\in R$ existiert
+        \2 Turingmaschine $\Phi$ berechnet $(X,R)$ falls Zeit$(\Phi,x)<\infty$ und $(x,$Output$(\Phi,x))\in R$
+        \2 Turingmaschine $\Phi$ berechnet $f$ falls es genau eine Lösung $y$ gibt. Dann ist $(x,f(x))\in R$
+        \2 Turingmaschine $\Phi$ entscheidet Sprache $L$ wenn $X=A^*$ und $f(x)\in \{0,1\}$ ist.
+        \2 polynomielle Turingmaschine $\Phi$ wenn ein Polynom $p$ mit Zeit$(\Phi,x)<p(x)$ existiert
+
+    \1 \textbf{Entscheidungsproblem} = ein Paar $(X,Y)$, wobei $Y\subseteq X$.     
+    \1 Entscheidungsprobleme $\subseteq$ Berechnungsprobleme
+        \2 Entscheidungsproblem $\cP$ ist Berechnungsproblem $\cP' = (X,\{(x,1) \mid x \in Y\} \cup \{(x,0) \mid x \in X\setminus Y \})$
+        \2 ein Algorithmus berechnet eine Funktion $f$ mit $f(x)=1$ falls $x\in Y$ und $f(x)=0$ falls $x\in X\setminus Y$.
+        
+    \1 \textbf{2-Band-Turingmaschine} ist eine Funktion $\Phi$
+    $$
+    \Phi: \underbrace{\{0,\ldots, N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}^2}_{\text{Buchstabe}} 
+    \longrightarrow 
+    \underbrace{\{-1,\ldots,N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}^2}_{\text{Buchstabe}} 
+    \times \underbrace{\{-1,0,1\}^2}_{\text{backwards, nothing, forwards}} 
+    $$
+        \2 Berechnung von $\Phi$ besteht aus rekursiv definierten Tupeln $(n^i,s^i,t^i,\pi^i,\rho^i)$, wobei
+            \3 $i$ = diskrete Zeit, $n^i$ = $i$-ter Befehl, 
+            \3 starte mit 
+            $$(n^0,s^0,t^0,\pi^0,\rho^0)=(0,\{\ldots,\sqcup,x_1,\ldots,x_{\text{size}(x)},\sqcup,\ldots\},\{\ldots\sqcup\sqcup\sqcup\ldots\},1,1)$$
+            \3 $\Phi(n^i,s^i_{\pi^i},t^i_{\rho^i})=(n^{i+1},s^{i+1}_{\pi^i},t^{i+1}_{\rho^i},\pi^{i+1}-\pi^i,\rho^{i+1}-\rho^i)$
+    \1 $2$-Band-Turingmaschine $\Phi$ kann durch $1$-Band-Turingmaschine $\Phi'$ in $O(\text{Zeit}(\Phi,x)^2)$ simuliert werden
+    \1 \textbf{Orakel-Turingmaschine} ist eine Funktion $\Phi$
+    $$
+    \Phi: \underbrace{\{0,\ldots, N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}^2}_{\text{Buchstabe}} 
+    \longrightarrow 
+    \underbrace{\{-2,\ldots,N\}}_{\text{Befehl}} 
+    \times \underbrace{\overline{A}^2}_{\text{Buchstabe}} 
+    \times \underbrace{\{-1,0,1\}^2}_{\text{backwards, nothing, forwards}} 
+    $$
+        \2 zusätzlicher Befehl $-2$, nach Ausführung andere Zeitbemessung $t^{i+1}=t^i+1+size(y)$
+        \2 auf zweitem Band steht eine Instanz von $(X,R)$ und wir überschreiben es mit $y$ aus $(x,y)\in R$
+        \2 terminiert \textit{nicht}, springt auf den nächsten Zustand in der Liste
+
+    \1 Beispiele: \textsc{Lineare Ungleichungen}, \textsc{Ganzzahlige Lineare Ungleichungen}
+\end{outline}
+
+\subsection{$P$ und $NP$}
+
+\begin{outline}
+    \1 $P$ = Klasse aller \textbf{Entscheidungsprobleme}, für die es einen polynomiellen Algorithmus gibt
+    \1 $NP$ = Klasse aller \textbf{Entscheidungsprobleme}, für die ein Zertifikat $c$ in einer polynomiellen Zeit überprüft werden kann
+    \1 $coNP$ = Klasse aller \textbf{Entscheidungsprobleme}, deren komplementäre Entscheidungsprobleme in $NP$ sind
+        \2 komplementäres Entscheidungsproblem = $(X, X\setminus Y)$
+    \1 $P\subseteq NP$
+    \1 \textbf{randomisierter Algorithmus}
+        \2 Las-Vegas-Algorithmus = immer richtig
+        \2 Monte-Carlo-Algorithmus = nicht immer richtig
+        \2 mit einseitigem Fehler = für jedes $s\in S$ mit $f(s)=0$ gilt immer für beliebige $r: g(s\#r)=0$
+        \2 nichtdeterministischer Algortihmus = mit einseitigem Fehler + für jedes $s\in S$ mit $f(s)=1$ gibt es immer mindestens ein $r$ mit $g(s\#r)=1$ 
+            \3 für jede Nein-Instanz habe nein, für jede Ja-Instanz gibt es eine Chance auf ja.
+    \1 polynomielle Reduktion (= Berechnungsprobleme)
+    \1 polynomielle Transformation (= Entscheidungsprobleme)
+        \2 jede Transformation ist eine Reduktion
+    \1 \textbf{$NP$-vollständig} = Entscheidungsproblem $\cP$ + jedes Entscheidungsproblem in $NP$ lässt sich polynomiell in $\cP$ transformieren 
+    \1 \textbf{$NP$-schwer} = Berechnungsproblem $\cP$ + jedes Entscheidungsproblem in $NP$ lässt sich polynomiell auf $\cP$ reduzieren
+    \1 $NP$-vollständig $\subseteq$ $NP$-schwer
+\end{outline}
+
+\subsection{Der Satz von Cook}
+
+\begin{outline}
+    \1 \textsc{Satisfiability} = gegeben eine Menge $X$ von Variablen und eine Familie $Z$ von Klauseln über $X$ entscheide, ob $Z$ erfüllbar ist. 
+        \2 boolesche Variablen $X$, Wahrheitsbelegung $T:X\rightarrow \{1,0\}$, Klausel $K(T)=\lor_i L_i(T)$, Familie von Klauseln $Z(T)=\bigwedge_j K_j(T)$
+        \2 erfüllbar wenn $T$ existiert mit $Z(T)$ wahr
+    \1 \textsc{Satisfiability} ist $NP$-vollständig
+        \2 \textsc{Satisfiability} ist in $NP$ (gegeben $a$ überprüfe ob $Z(a)$ wahr)
+        \2 $O(Q^2)$ Variablen udn $O(Q^3)$ Klauseln
+\marginnote[0cm]{XX. Vorlesung, 11.01.24}
+    \1 von Entscheidungsproblemen zu Berechnungsproblemen
+        \2 für Entscheidungsprobleme reicht polynomielle Transformation zwischen zwei Problemen, in dem man Ja-Instanzen auf Ja-Instanzen abbildet und Nein-Instanzen auf Nein-Instanzen
+        \2 für Berechnungsproblemen braucht man Orakel-Turingmaschinen (siehe oben)
+        \2 Berechnungsproblem $\cP_1$ auf $\cP_2$ \textbf{polynomiell reduzierbar} wenn es ein $\cP_2$ benutzender polynomieller Orakel-Algorithmus existiert.
+    \1 wenn $\cP_2$ polynomiell + $\cP_1$ polynomiell auf $\cP_2$ reduzierbar, dann gibt es einen polynomiellen Algorithmus für $\cP_1$ 
+    \1 ein Berechnungsproblem $\cP$ ist $NP$-schwer, wenn jedes Problem aus $NP$ polynomiell auf $\cP$ reduzierbar ist
+        \2 falls es einen polynomiellen Algorithmus für ein $NP$-schweres Problem gibt, dann gilt $P=NP$.
+        \2 $NP$-vollständige Probleme sind $NP$-schwer
+    \1 \textsc{3Sat} ist $NP$-vollständig
+        \2 \textsc{3Sat} $\in NP$
+        \2 jede Klausel hat \textbf{genau} drei Literale
+        \2 reduzieren \textsc{Sat} auf \textsc{3Sat}
+            \3 Fall 1: Klausel, die mehr als drei Literale haben $\lambda_1\ldots\lambda_k$ mit $k>3$. Ersetze durch $\ldots$ mit $(k-3)$ neuen Variablen $y_1\ldots y_{k-3}$
+            \3 Fall 2: Klausel mit genau zwei Literalen $\lambda_1,\lambda_2$. Ersetze durch $\ldots$
+            \3 Fall 3: Klausel mit genau einem Literal $\lambda_1$. Ersetze durch $\ldots$
+    \1 \textsc{2Sat} ist polynomiell lösbar
+\end{outline}
+
+\subsection{Beispiele von NP-vollständigen Problemen}
+
+\begin{outline}
+    \1 \textsc{Stable-Set}
+        \2 hat $G$ eine stabile Menge der Größe $k$? ($k$ paarweise nicht benachbarte Knoten)
+        \2 ist in $NP$, Zertifikat = stabile Menge der Größe $k$
+        \2 zu zeigen: \textsc{Sat} ist polynomiell auf \textsc{Stable-Set} transformierbar
+            \3 sei $Z$ eine Familie von Klauseln $Z_1,\ldots, Z_n$. Konstruiere Graph $G$, sodass $G$ enthält stabile Menge der Größe $m \iff Z$ erfüllbar ist.
+            \3 für jede Klausel $Z_i$ enthält $G$ eine Clique mit $k_i$ Knoten, Knoten zwischen verschiedenen Cliquen sind verbunden nur wenn sie sich widersprechen
+            \3 eine stabile Menge $X\subseteq G$ ist dann nach Konstruktion eine Wahrheitsbelegung von \textsc{Sat}
+    \1 \textsc{Vertex-Cover}
+        \2 hat $G$ eine Knotenüberdeckung mit $k$ Knoten?
+    \1 \textsc{Clique}
+        \2 hat $G$ eine Clique mit $k$ Knoten?
+    \1 \textsc{Hamilton-Kreis}
+        \2 hat $G$ einen Kreis
+    \1 \textsc{Subset-Sum}
+    \1 \textsc{Partition}
+\end{outline}
+
+\subsection{Die $coNP$ Klasse}
+
+\subsection{$NP$-schwere Probleme}
+\end{document}
